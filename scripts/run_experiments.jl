@@ -12,9 +12,8 @@ using CSV,
     ProgressMeter,
     Printf;
 
-using Revise;
-includet("../src/ModuloSamplings.jl");
-includet("../src/ClassicalUS.jl")
+include("../src/ModuloSamplings.jl");
+include("../src/ClassicalUS.jl")
 
 SEPERATOR = "-------------------------"
 function log_info(txt::String)
@@ -97,7 +96,7 @@ function draw_samples(ssm::ModuloSampling.SSM, ts)
                     Matrix(I, ModuloSampling.state_dim(ssm), ModuloSampling.state_dim(ssm)),
                 ),
             )
-        samples[t] = (ssm.H*x)[1]
+        samples[t] = (ssm.H * x)[1]
     end
 
     p = plot(ts, samples)
@@ -272,9 +271,9 @@ function hardware_reconstruction()
     filt_ord = length(DSP.Filters.coefa(digital))
 
     A = zeros((filt_ord, filt_ord))
-    A[1, 1:(end-1)] = -(DSP.Filters.coefa(digital)[2:end])
+    A[1, 1:(end - 1)] = -(DSP.Filters.coefa(digital)[2:end])
     for i in 2:filt_ord
-        A[i, i-1] = 1
+        A[i, i - 1] = 1
     end
 
     Q = zeros((filt_ord, filt_ord))
@@ -526,9 +525,9 @@ function noisy_reconstruction()
 
     smoothing_range = 5
     A = zeros((filt_ord + smoothing_range, filt_ord + smoothing_range))
-    A[1, 1:(filt_ord-1)] = -(DSP.Filters.coefa(digital)[2:end])
+    A[1, 1:(filt_ord - 1)] = -(DSP.Filters.coefa(digital)[2:end])
     for i in 2:size(A)[1]
-        A[i, i-1] = 1
+        A[i, i - 1] = 1
     end
 
     Q = zeros(size(A))
@@ -536,14 +535,14 @@ function noisy_reconstruction()
     H = zeros((1, filt_ord + smoothing_range))
     H[1, 1:filt_ord] = DSP.Filters.coefb(digital)
     H_smoothing = zeros((1, filt_ord + smoothing_range))
-    H_smoothing[1, (smoothing_range+1):end] = DSP.Filters.coefb(digital)
+    H_smoothing[1, (smoothing_range + 1):end] = DSP.Filters.coefb(digital)
     R = zeros((1, 1))
     Q[1, 1] = 1
 
     desired_power = 1E0
 
     Q[1, 1] = desired_power / ModuloSampling.process_power(A, Q, H)
-    R[1, 1] = noise_var^2
+    R[1, 1] = model_noise_var
     ssm = ModuloSampling.SSM(A, Q, H, R)
 
     pf_params = ModuloSampling.PFParams(4_00, 0.1, -lambda, lambda, adc_bits, ssm, 1E-6)
@@ -556,7 +555,7 @@ function noisy_reconstruction()
     end
     m_smooth = zeros(length(z_adc))
     for t in smoothing_range:length(z_adc)
-        m_smooth[t-smoothing_range+1] = ms_smooth[t, :]' * weights_hist[t, :]
+        m_smooth[t - smoothing_range + 1] = ms_smooth[t, :]' * weights_hist[t, :]
     end
 
     baseline = y
