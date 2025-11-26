@@ -477,8 +477,20 @@ function noisy_reconstruction()
     ts = 0:T:1
     f(t) = exp(-20 * (t - 0.5)^2) * sin(2 * pi * 10 * (t - 0.5))
     x = f.(ts)
-    noise_var = 5E-2
-    y = x + rand(Normal(0, noise_var), length(ts))
+
+    # -----
+    # Found a small mistake in the code here when producing a presentation.
+    # I had originally used 5E-2 as the signal noise variance, but forgot that 
+    # Normal(..., ...) takes the standard variation as its argument.
+    # The code as here replicates the experiment, although there is a slight 
+    # error in the paper (only the listed variance should change, and it 
+    # should be stated that the SSM model isn't matched to the process noise.)
+
+    true_noise_var = (5E-2)^2
+    model_noise_var = 5E-2
+
+    y = x + rand(Normal(0, sqrt(true_noise_var)), length(ts))
+    # -----
 
     beta = 1.2
 
@@ -531,7 +543,7 @@ function noisy_reconstruction()
     desired_power = 1E0
 
     Q[1, 1] = desired_power / ModuloSampling.process_power(A, Q, H)
-    R[1, 1] = noise_var
+    R[1, 1] = noise_var^2
     ssm = ModuloSampling.SSM(A, Q, H, R)
 
     pf_params = ModuloSampling.PFParams(4_00, 0.1, -lambda, lambda, adc_bits, ssm, 1E-6)
