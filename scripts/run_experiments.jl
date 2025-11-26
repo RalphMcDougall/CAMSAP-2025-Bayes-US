@@ -97,7 +97,7 @@ function draw_samples(ssm::ModuloSampling.SSM, ts)
                     Matrix(I, ModuloSampling.state_dim(ssm), ModuloSampling.state_dim(ssm)),
                 ),
             )
-        samples[t] = (ssm.H * x)[1]
+        samples[t] = (ssm.H*x)[1]
     end
 
     p = plot(ts, samples)
@@ -272,9 +272,9 @@ function hardware_reconstruction()
     filt_ord = length(DSP.Filters.coefa(digital))
 
     A = zeros((filt_ord, filt_ord))
-    A[1, 1:(end - 1)] = -(DSP.Filters.coefa(digital)[2:end])
+    A[1, 1:(end-1)] = -(DSP.Filters.coefa(digital)[2:end])
     for i in 2:filt_ord
-        A[i, i - 1] = 1
+        A[i, i-1] = 1
     end
 
     Q = zeros((filt_ord, filt_ord))
@@ -473,28 +473,20 @@ function noisy_reconstruction()
     log_info("$(SEPERATOR)\n<> Running noisy reconstruction experiment...")
 
     base_sample_rate = 1E3
-    oversampling = 1
-    T_over = 1 / (base_sample_rate * oversampling)
     T = 1 / base_sample_rate
-    ts_over = 0:T_over:1
     ts = 0:T:1
     f(t) = exp(-20 * (t - 0.5)^2) * sin(2 * pi * 10 * (t - 0.5))
     x = f.(ts)
-    x_over = f.(ts_over)
     noise_var = 5E-2
-    y_over = x_over + rand(Normal(0, noise_var), length(ts_over))
-
-    y = y_over[1:oversampling:end]
+    y = x + rand(Normal(0, noise_var), length(ts))
 
     beta = 1.2
 
     lambda = 0.4
     adc_bits = 3
 
-    z_over = y_over
     z = y
     z_adc = ModuloSampling.adc_foo.(z, -lambda, lambda, adc_bits)
-    z_adc_over = ModuloSampling.adc_foo.(z_over, -lambda, lambda, adc_bits)
     z_only_adc =
         ModuloSampling.adc_foo.(z, -100.0, 100.0, log2(200 * (2^adc_bits) / (2 * lambda)))
     z_low_adc = ModuloSampling.adc_foo.(z, -1.2, 1.2, adc_bits)
@@ -502,16 +494,16 @@ function noisy_reconstruction()
     Omega = 2 * pi * 200
     eta_max = 2 * 2 * lambda / (2^adc_bits)
     display_val("Calculuated US α", ClassicalUS.alpha(beta, lambda, eta_max))
-    display_val("US N lower bound", ClassicalUS.N_lb(lambda, beta, T_over, Omega))
-    display_val("US N noisy bound", ClassicalUS.N_noisy(lambda, beta, T_over, Omega))
+    display_val("US N lower bound", ClassicalUS.N_lb(lambda, beta, T, Omega))
+    display_val("US N noisy bound", ClassicalUS.N_noisy(lambda, beta, T, Omega))
     display_val("US T upper bound", ClassicalUS.US_theorem_bound(Omega))
     display_val(
         "US T noisy bound", ClassicalUS.US_theorem_bound_noisy(Omega, beta, lambda, eta_max)
     )
-    display_val("US T η bound", ClassicalUS.eta_upper_bound(T_over, beta, -2))
-    display_val("Curr T", T_over)
-    us_reconstruction = ClassicalUS.noisy_US(z_adc_over, x, 1, lambda, T_over, Omega)
-    display_val("mERR US", 1000 * mse(us_reconstruction, x_over))
+    display_val("US T η bound", ClassicalUS.eta_upper_bound(T, beta, -2))
+    display_val("Curr T", T)
+    us_reconstruction = ClassicalUS.noisy_US(z_adc, x, 1, lambda, T, Omega)
+    display_val("mERR US", 1000 * mse(us_reconstruction, x))
 
     analog = DSP.Filters.analogfilter(
         DSP.Filters.Lowpass(2 * pi * 2E1), DSP.Filters.Butterworth(8)
@@ -522,9 +514,9 @@ function noisy_reconstruction()
 
     smoothing_range = 5
     A = zeros((filt_ord + smoothing_range, filt_ord + smoothing_range))
-    A[1, 1:(filt_ord - 1)] = -(DSP.Filters.coefa(digital)[2:end])
+    A[1, 1:(filt_ord-1)] = -(DSP.Filters.coefa(digital)[2:end])
     for i in 2:size(A)[1]
-        A[i, i - 1] = 1
+        A[i, i-1] = 1
     end
 
     Q = zeros(size(A))
@@ -532,7 +524,7 @@ function noisy_reconstruction()
     H = zeros((1, filt_ord + smoothing_range))
     H[1, 1:filt_ord] = DSP.Filters.coefb(digital)
     H_smoothing = zeros((1, filt_ord + smoothing_range))
-    H_smoothing[1, (smoothing_range + 1):end] = DSP.Filters.coefb(digital)
+    H_smoothing[1, (smoothing_range+1):end] = DSP.Filters.coefb(digital)
     R = zeros((1, 1))
     Q[1, 1] = 1
 
@@ -552,7 +544,7 @@ function noisy_reconstruction()
     end
     m_smooth = zeros(length(z_adc))
     for t in smoothing_range:length(z_adc)
-        m_smooth[t - smoothing_range + 1] = ms_smooth[t, :]' * weights_hist[t, :]
+        m_smooth[t-smoothing_range+1] = ms_smooth[t, :]' * weights_hist[t, :]
     end
 
     baseline = y
@@ -580,7 +572,7 @@ function noisy_reconstruction()
         grid=false,
         xticks=false,
     )
-    plot!(ts_over, us_reconstruction; label="US-Alg", color=RED)
+    plot!(ts, us_reconstruction; label="US-Alg", color=RED)
     title!("Noisy signal reconstruction")
 
     p_recon = scatter(
